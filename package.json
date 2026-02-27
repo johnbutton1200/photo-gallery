@@ -5,7 +5,7 @@
   "private": true,
   "main": "server.js",
   "engines": {
-    "node": "12.x"
+    "node": "20.x"
   },
   "scripts": {
     "test": "exit 0",
@@ -28,12 +28,10 @@
   "homepage": "https://github.com/balena-io-projects/balena-dash#readme",
   "dependencies": {
     "cors": "^2.8.5",
-    "ejs": "*",
+    "ejs": "^3.1.9",
     "express": "*",
     "lodash.chunk": "^4.2.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.3",
-    "sharp": "0.22.1",
+    "sharp": "^0.32.0",
     "node-schedule": "1.3.2"
   }
 }

@@ -1,4 +1,4 @@
-FROM balenalib/%%BALENA_ARCH%%-node:11-buster-build AS build
+FROM balenalib/%%BALENA_ARCH%%-node:20-bookworm-build AS build
 
 # Defines our working directory in container
 WORKDIR /usr/src/app
@@ -8,9 +8,9 @@ COPY package.json package.json
 
 # This install npm dependencies on the balena build server,
 # making sure to clean up the artifacts it creates in order to reduce the image size.
-RUN JOBS=MAX npm install --production --unsafe-perm && npm cache verify
+RUN JOBS=MAX npm install --omit=dev && npm cache verify
 
-FROM balenalib/%%BALENA_ARCH%%-node:11-buster
+FROM balenalib/%%BALENA_ARCH%%-node:20-bookworm
 COPY --from=build /usr/src/app/node_modules node_modules
 
 # Defines our working directory in container

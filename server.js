@@ -3,8 +3,6 @@
 
 // Call the packages we need
 var express   = require("express");
-var request   = require("request");
-var rp        = require("request-promise-native");
 var cors      = require("cors");
 var _chunk    = require("lodash.chunk");
 var fs        = require("fs");
@@ -94,7 +92,7 @@ if(process.env.GALLERY_URL) {
     if (styles.includes(container)) {
       image_styles = container;
     }
-  } 
+  }
 
   // Gallery transition effect
   var transition = "fade" ; // default value
@@ -102,9 +100,9 @@ if(process.env.GALLERY_URL) {
     var effects = ["fade", "horizontal", "vertical", "kenburns", "false"];
     var transitionSelected = process.env.GALLERY_EFFECT.toLowerCase();
     if (effects.includes(transitionSelected)) {
-      transition = transitionSelected; 
+      transition = transitionSelected;
     }
-  } 
+  }
 
   // Get gallery update cron timing
   // 0 */12 * * *
@@ -125,7 +123,7 @@ if(process.env.GALLERY_URL) {
   if (process.env.COMPRESS_QUALITY) {
     compressQuality = parseInt(process.env.COMPRESS_QUALITY);
   }
-  
+
   // Shuffle album images
   var shuffleGallery = false; // default value
   if (process.env.SHUFFLE_SLIDESHOW) {
@@ -154,7 +152,7 @@ if(process.env.GALLERY_URL) {
 // Functions //
 
 /**
- * Fetch all images from a custom album url 
+ * Fetch all images from a custom album url
  * @param {String} albumURL Album URL from Google Photos, Dropbox or Apple Photos.
  */
 function fetchImages(albumURL) {
@@ -163,7 +161,7 @@ function fetchImages(albumURL) {
   var hostname = getHostName(albumURL);
 
   // Google Photos
-  if (["photos.app.goo.gl", "goo.gl"].includes(hostname)) {
+  if (["photos.app.goo.gl", "goo.gl", "photos.google.com"].includes(hostname)) {
     console.log("📷 - Starting a google photos slideshow.");
 
     var photos = [];
@@ -181,30 +179,24 @@ function fetchImages(albumURL) {
           return `${p[1]}=w1000`; // Change here to increase/decrease image width-size
         });
 
-    request(
-      {
-        uri: albumURL,
-        method: "GET",
-        timeout: 10000
-      },
-      function(error, response, body) {
-        if (!error && response.statusCode == 200) {
-          // Fetch and remove duplicate images
-          photos = extractPhotos(body);
-          photos = [...new Set(photos)]; // save only unique values
+    fetch(albumURL, { signal: AbortSignal.timeout(10000) })
+      .then(function(response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.text();
+      })
+      .then(function(body) {
+        // Fetch and remove duplicate images
+        photos = extractPhotos(body);
+        photos = [...new Set(photos)]; // save only unique values
 
-          console.log("Found " + photos.length + " images.");
-          setImagesArray(photos);
-        }
-
-        // In case of errors
-        else {
-          photos.push("views/album_url_error.png");
-          setImagesArray(photos);
-          console.log("error:", error);
-        }
-      }
-    );
+        console.log("Found " + photos.length + " images.");
+        setImagesArray(photos);
+      })
+      .catch(function(error) {
+        photos.push("views/album_url_error.png");
+        setImagesArray(photos);
+        console.log("error:", error);
+      });
   }
 
   // Dropbox Photos
@@ -216,33 +208,27 @@ function fetchImages(albumURL) {
     const rx = /(https:\/\/)([^\.]+)(.previews.dropboxusercontent.com\/p\/thumb\/)([^\/]+)(\/p.jpeg 1280)/;
     const extractPhotos = data => data.match(new RegExp(rx, "g"));
 
-    request(
-      {
-        uri: albumURL,
-        method: "GET",
-        timeout: 10000
-      },
-      function(error, response, body) {
-        if (!error && response.statusCode == 200) {
-          body = extractPhotos(body);
+    fetch(albumURL, { signal: AbortSignal.timeout(10000) })
+      .then(function(response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.text();
+      })
+      .then(function(body) {
+        var entries = extractPhotos(body);
 
-          body.forEach(function(entry) {
-            entry = entry.slice(0, -5);
-            photos.push(entry);
-          });
+        entries.forEach(function(entry) {
+          entry = entry.slice(0, -5);
+          photos.push(entry);
+        });
 
-          console.log("Found " + photos.length + " images.");
-          setImagesArray(photos);
-        }
-
-        // In case of errors
-        else {
-          photos.push("views/album_url_error.png");
-          setImagesArray(photos);
-          console.log("error:", error);
-        }
-      }
-    );
+        console.log("Found " + photos.length + " images.");
+        setImagesArray(photos);
+      })
+      .catch(function(error) {
+        photos.push("views/album_url_error.png");
+        setImagesArray(photos);
+        console.log("error:", error);
+      });
   }
 
   // Apple Photos
@@ -291,11 +277,11 @@ function fetchImages(albumURL) {
         setImagesArray(images);
         console.log("error:", error);
       });
-  } 
+  }
   else if (albumURL === "USBDRIVE") {
     let usbPhotos = listImagesInDirSync('/usbstorage')
     let currentPhotos = listImagesInDirSync(path.join(path.dirname(require.main.filename), 'views/usbstorage'))
-    
+
     try {
       if (usbPhotos.length > 0) {
         // Only update photos if there are new ones on /usbstorage
@@ -324,7 +310,7 @@ function fetchImages(albumURL) {
 
 /**
  * Callback function to set image array.
- * Depending on the parameters, can also suffle image array. 
+ * Depending on the parameters, can also suffle image array.
  * @param {Array} value Images array.
  */
 function setImagesArray(value) {
@@ -416,14 +402,14 @@ function getPhotoMetadata(baseUrl) {
 
   var dataString = '{"streamCtag":null}';
 
-  var options = {
-    url: url,
+  return fetch(url, {
     method: "POST",
     headers: headers,
     body: dataString
-  };
-
-  return rp(options).then(function(body) {
+  }).then(function(response) {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.text();
+  }).then(function(body) {
     var data = JSON.parse(body);
 
     var photos = {};
@@ -465,16 +451,16 @@ function getUrls(baseUrl, photoGuids) {
     photoGuids: photoGuids
   });
 
-  var options = {
-    url: url,
+  // console.log('Retrieving URLs for ' + photoGuids[0] + ' - ' + photoGuids[photoGuids.length - 1] + '...');
+
+  return fetch(url, {
     method: "POST",
     headers: headers,
     body: dataString
-  };
-
-  // console.log('Retrieving URLs for ' + photoGuids[0] + ' - ' + photoGuids[photoGuids.length - 1] + '...');
-
-  return rp(options).then(function(body) {
+  }).then(function(response) {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.text();
+  }).then(function(body) {
     var data = JSON.parse(body);
 
     var items = {};
@@ -526,35 +512,30 @@ function decorateUrls(metadata, urls) {
  * Download file to directory
  * @param {String} url File URL.
  * @param {String} dest Full path of destination folder to save file.
- * @param {String} cb Callback function. 
  */
-function downloadFile(url, dest, cb) {
-  const file = fs.createWriteStream(dest);
-  const sendReq = request.get(url);
-
-  // verify response code
-  sendReq.on("response", response => {
-    if (response.statusCode !== 200) {
-      console.log("Response status was " + response.statusCode);
-    }
-
-    sendReq.pipe(file);
-  });
-
-  // close() is async, call cb after close completes
-  file.on("finish", () => file.close(resizeFile(dest, maxWidth)));
-
-  // check for request errors
-  sendReq.on("error", err => {
-    fs.unlink(dest);
-    console.log(err.message);
-  });
-
-  file.on("error", err => {
-    // Handle errors
-    fs.unlink(dest); // Delete the file async. (But we don't check the result)
-    console.log(err.message);
-  });
+function downloadFile(url, dest) {
+  fetch(url)
+    .then(function(response) {
+      if (!response.ok) {
+        console.log("Response status was " + response.status);
+        return;
+      }
+      return response.arrayBuffer();
+    })
+    .then(function(buffer) {
+      if (!buffer) return;
+      fs.writeFile(dest, Buffer.from(buffer), function(err) {
+        if (err) {
+          console.log("Error saving file: " + err.message);
+          return;
+        }
+        resizeFile(dest, maxWidth);
+      });
+    })
+    .catch(function(err) {
+      fs.unlink(dest, function() {});
+      console.log(err.message);
+    });
 }
 
 /**
@@ -593,7 +574,7 @@ function resizeFile(imageFile, maxWidth = 1000) {
 }
 
 /**
- * List images in directory 
+ * List images in directory
  * @param {String} directory Directory to check for images as string.
  */
 function listImagesInDir(directory) {
