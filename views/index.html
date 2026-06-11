@@ -19,12 +19,15 @@
         border: 0;
         width: 100%;
         height: 100%;
+        backface-visibility: hidden;
+        transform: translateZ(0);
+        will-change: opacity;
       }
       .sy-slide > #image01_1,
       .sy-slide > #image02_1 {
         <% if (image_styles == "contain") { %>
           object-fit: cover;
-          filter: blur(20px);
+          filter: blur(8px);
           opacity: 0.8;
         <% } else { %>
           display: none;
@@ -80,7 +83,7 @@
           pager: false,
           controls: false,
           captions: false,
-          useCSS: false,
+          useCSS: true,
           transition: transEffect,
           speed: 4000, // transition speed in milliseconds
           easing: "linear",
