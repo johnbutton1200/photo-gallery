@@ -27,6 +27,21 @@ Place your photos on a USB stick and plug it into the Raspberry Pi. Each time al
 
 ## Usage
 
+### GitHub Container Registry
+
+After the `Publish GHCR Image` workflow runs on `master`, you can use:
+
+```yml
+photos:
+  image: ghcr.io/johnbutton1200/photo-gallery:latest
+  privileged: true
+  restart: always
+  ports:
+    - "8888"
+```
+
+The workflow publishes a multi-architecture image for `amd64`, `arm64`, and `arm/v7`.
+
 Include this snippet in your `docker-compose.yml` file under 'services':
 
 ```yml
