@@ -25,7 +25,7 @@
       }
       .sy-slide > #image01_1,
       .sy-slide > #image02_1 {
-        <% if (image_styles == "contain") { %>
+        <% if (image_styles == "contain" && transition == "false") { %>
           object-fit: cover;
           filter: blur(8px);
           opacity: 0.8;
@@ -76,7 +76,11 @@
  
       jQuery(document).ready(function(){
 
+        var isLegacyIOS = /OS 10_3(_\d+)?/.test(window.navigator.userAgent);
         var transEffect = ("<%= transition %>" == "false") ? false : "<%= transition %>";
+        if (isLegacyIOS && (transEffect == "fade" || transEffect == "kenburns")) {
+          transEffect = false;
+        }
         var imageStyles = "<%= image_styles %>";
 
         jQuery('#slides').slippry({
